@@ -1,0 +1,110 @@
+# ===========================
+# ARCHIVOS DEL SISTEMA
+# ===========================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ===========================
+# IDE (PHPStorm, VSCode, etc.)
+# ===========================
+.idea/workspace.xml
+.idea/dataSources.local.xml
+.idea/dataSources.xml
+.idea/copilot.data.migration.ask2agent.xml
+.vscode/
+*.sublime-*
+
+# ===========================
+# BACKEND (Laravel)
+# ===========================
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/.env.backup
+backend/.phpunit.result.cache
+backend/Homestead.json
+backend/Homestead.yaml
+backend/npm-debug.log
+backend/yarn-error.log
+backend/.phpstorm.meta.php
+backend/_ide_helper.php
+backend/.php-cs-fixer.cache
+
+# Storage (excepto .gitkeep)
+backend/storage/*.key
+backend/storage/logs/*.log
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/framework/testing/*
+!backend/storage/framework/cache/.gitkeep
+!backend/storage/framework/sessions/.gitkeep
+!backend/storage/framework/views/.gitkeep
+!backend/storage/framework/testing/.gitkeep
+backend/storage/app/public/*
+!backend/storage/app/public/.gitkeep
+
+# Database
+backend/database/database.sqlite
+backend/*.sqlite
+backend/*.sqlite-journal
+
+# Build
+backend/public/hot
+backend/public/storage
+backend/public/build
+
+# ===========================
+# FRONTEND (React + Vite)
+# ===========================
+galp-n-inventory-hub/node_modules/
+galp-n-inventory-hub/dist/
+galp-n-inventory-hub/.env
+galp-n-inventory-hub/.env.local
+galp-n-inventory-hub/.env.production
+galp-n-inventory-hub/build/
+galp-n-inventory-hub/coverage/
+galp-n-inventory-hub/.vite/
+galp-n-inventory-hub/.turbo/
+
+# Logs
+galp-n-inventory-hub/npm-debug.log*
+galp-n-inventory-hub/yarn-debug.log*
+galp-n-inventory-hub/yarn-error.log*
+galp-n-inventory-hub/pnpm-debug.log*
+galp-n-inventory-hub/lerna-debug.log*
+
+# ===========================
+# COMPOSER
+# ===========================
+composer.phar
+composer.lock
+
+# ===========================
+# NODE / NPM / YARN / PNPM / BUN
+# ===========================
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+galp-n-inventory-hub/bun.lockb
+
+# ===========================
+# ARCHIVOS DE DESPLIEGUE
+# ===========================
+*.bak
+*.backup
+output.txt
+server.log
+
+# ===========================
+# ARCHIVOS TEMPORALES
+# ===========================
+temp-laravel/
+

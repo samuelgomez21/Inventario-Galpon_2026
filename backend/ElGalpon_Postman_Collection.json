@@ -1,0 +1,1544 @@
+{
+	"info": {
+		"_postman_id": "el-galpon-api-collection",
+		"name": "El Galpón - API Backend",
+		"description": "Colección completa de endpoints para el sistema de gestión de inventario El Galpón",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "🔐 Autenticación",
+			"item": [
+				{
+					"name": "1. Solicitar Código de Verificación",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"manuela.gomez@elgalpon-alcala.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/solicitar-codigo",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "solicitar-codigo"]
+						},
+						"description": "Envía un código de 6 dígitos al email del usuario registrado. El código expira en 10 minutos."
+					}
+				},
+				{
+					"name": "2. Verificar Código (Login)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('token', jsonData.token);",
+									"    console.log('Token guardado automáticamente');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"manuela.gomez@elgalpon-alcala.com\",\n    \"codigo\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/verificar-codigo",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "verificar-codigo"]
+						},
+						"description": "Verifica el código recibido por email y devuelve un token de autenticación. El token se guarda automáticamente en la variable de colección."
+					}
+				},
+				{
+					"name": "3. Obtener Usuario Actual",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/me",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "me"]
+						},
+						"description": "Obtiene la información del usuario autenticado actualmente."
+					}
+				},
+				{
+					"name": "4. Cerrar Sesión",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "logout"]
+						},
+						"description": "Cierra la sesión actual (revoca el token actual)."
+					}
+				},
+				{
+					"name": "5. Cerrar Todas las Sesiones",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/logout-all",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "logout-all"]
+						},
+						"description": "Cierra todas las sesiones del usuario (revoca todos los tokens)."
+					}
+				}
+			]
+		},
+		{
+			"name": "👥 Usuarios",
+			"item": [
+				{
+					"name": "Listar Usuarios",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usuarios",
+							"host": ["{{base_url}}"],
+							"path": ["usuarios"]
+						},
+						"description": "Lista todos los usuarios. Solo admin puede acceder."
+					}
+				},
+				{
+					"name": "Crear Usuario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Nuevo Usuario\",\n    \"email\": \"nuevo.usuario@elgalpon-alcala.com\",\n    \"rol\": \"empleado\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/usuarios",
+							"host": ["{{base_url}}"],
+							"path": ["usuarios"]
+						},
+						"description": "Crea un nuevo usuario. Solo admin puede crear usuarios. Roles: 'admin' o 'empleado'."
+					}
+				},
+				{
+					"name": "Ver Usuario",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usuarios/1",
+							"host": ["{{base_url}}"],
+							"path": ["usuarios", "1"]
+						},
+						"description": "Obtiene los detalles de un usuario específico."
+					}
+				},
+				{
+					"name": "Actualizar Usuario",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Usuario Actualizado\",\n    \"rol\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/usuarios/1",
+							"host": ["{{base_url}}"],
+							"path": ["usuarios", "1"]
+						},
+						"description": "Actualiza los datos de un usuario."
+					}
+				},
+				{
+					"name": "Eliminar Usuario",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usuarios/1",
+							"host": ["{{base_url}}"],
+							"path": ["usuarios", "1"]
+						},
+						"description": "Elimina un usuario del sistema."
+					}
+				},
+				{
+					"name": "Activar/Desactivar Usuario",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/usuarios/1/toggle-activo",
+							"host": ["{{base_url}}"],
+							"path": ["usuarios", "1", "toggle-activo"]
+						},
+						"description": "Activa o desactiva un usuario."
+					}
+				}
+			]
+		},
+		{
+			"name": "📦 Categorías",
+			"item": [
+				{
+					"name": "Listar Categorías",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categorias",
+							"host": ["{{base_url}}"],
+							"path": ["categorias"]
+						}
+					}
+				},
+				{
+					"name": "Crear Categoría",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Nueva Categoría\",\n    \"slug\": \"nueva-categoria\",\n    \"icono\": \"fa-box\",\n    \"color\": \"#FF5733\",\n    \"descripcion\": \"Descripción de la categoría\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categorias",
+							"host": ["{{base_url}}"],
+							"path": ["categorias"]
+						}
+					}
+				},
+				{
+					"name": "Ver Categoría",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categorias/1",
+							"host": ["{{base_url}}"],
+							"path": ["categorias", "1"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar Categoría",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Categoría Actualizada\",\n    \"color\": \"#00FF00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categorias/1",
+							"host": ["{{base_url}}"],
+							"path": ["categorias", "1"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar Categoría",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categorias/1",
+							"host": ["{{base_url}}"],
+							"path": ["categorias", "1"]
+						}
+					}
+				},
+				{
+					"name": "Ver Subcategorías de Categoría",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/categorias/1/subcategorias",
+							"host": ["{{base_url}}"],
+							"path": ["categorias", "1", "subcategorias"]
+						}
+					}
+				},
+				{
+					"name": "Crear Subcategoría",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Nueva Subcategoría\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/categorias/1/subcategorias",
+							"host": ["{{base_url}}"],
+							"path": ["categorias", "1", "subcategorias"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🏷️ Productos",
+			"item": [
+				{
+					"name": "Listar Productos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/productos",
+							"host": ["{{base_url}}"],
+							"path": ["productos"]
+						}
+					}
+				},
+				{
+					"name": "Listar Productos (con filtros)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/productos?categoria_id=1&estado_stock=bajo&buscar=purina&per_page=10",
+							"host": ["{{base_url}}"],
+							"path": ["productos"],
+							"query": [
+								{
+									"key": "categoria_id",
+									"value": "1"
+								},
+								{
+									"key": "estado_stock",
+									"value": "bajo"
+								},
+								{
+									"key": "buscar",
+									"value": "purina"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Crear Producto",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"codigo\": \"ALI-100\",\n    \"nombre\": \"Nuevo Producto de Prueba\",\n    \"descripcion\": \"Descripción del producto\",\n    \"categoria_id\": 1,\n    \"subcategoria_id\": 1,\n    \"proveedor_id\": 1,\n    \"precio_compra\": 50000,\n    \"precio_venta\": 75000,\n    \"stock\": 100,\n    \"stock_minimo\": 20,\n    \"unidad_medida\": \"unidad\",\n    \"ubicacion\": \"Estante A1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/productos",
+							"host": ["{{base_url}}"],
+							"path": ["productos"]
+						}
+					}
+				},
+				{
+					"name": "Ver Producto",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/productos/1",
+							"host": ["{{base_url}}"],
+							"path": ["productos", "1"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar Producto",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Producto Actualizado\",\n    \"precio_venta\": 80000\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/productos/1",
+							"host": ["{{base_url}}"],
+							"path": ["productos", "1"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar Producto",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/productos/1",
+							"host": ["{{base_url}}"],
+							"path": ["productos", "1"]
+						}
+					}
+				},
+				{
+					"name": "Productos con Stock Bajo",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/productos/stock-bajo",
+							"host": ["{{base_url}}"],
+							"path": ["productos", "stock-bajo"]
+						}
+					}
+				},
+				{
+					"name": "Entrada de Stock",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cantidad\": 50,\n    \"precio_compra\": 45000,\n    \"proveedor_id\": 1,\n    \"lote\": \"LOTE-2026-001\",\n    \"fecha_vencimiento\": \"2027-12-31\",\n    \"notas\": \"Compra regular\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/productos/1/entrada",
+							"host": ["{{base_url}}"],
+							"path": ["productos", "1", "entrada"]
+						}
+					}
+				},
+				{
+					"name": "Salida de Stock",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cantidad\": 10,\n    \"motivo\": \"Venta al público\",\n    \"notas\": \"Cliente frecuente\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/productos/1/salida",
+							"host": ["{{base_url}}"],
+							"path": ["productos", "1", "salida"]
+						}
+					}
+				},
+				{
+					"name": "Ver Movimientos de Producto",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/productos/1/movimientos",
+							"host": ["{{base_url}}"],
+							"path": ["productos", "1", "movimientos"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🏢 Proveedores",
+			"item": [
+				{
+					"name": "Listar Proveedores",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/proveedores",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores"]
+						}
+					}
+				},
+				{
+					"name": "Crear Proveedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Nuevo Proveedor\",\n    \"email\": \"contacto@nuevoproveedor.com\",\n    \"telefono\": \"+57 315 123 4567\",\n    \"direccion\": \"Calle 123 #45-67, Cali\",\n    \"nit\": \"900123456-7\",\n    \"contacto_nombre\": \"Juan Pérez\",\n    \"notas\": \"Proveedor de alimentos\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/proveedores",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores"]
+						}
+					}
+				},
+				{
+					"name": "Ver Proveedor",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/proveedores/1",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "1"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar Proveedor",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"Proveedor Actualizado\",\n    \"calificacion\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/proveedores/1",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "1"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar Proveedor",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/proveedores/1",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "1"]
+						}
+					}
+				},
+				{
+					"name": "Registrar Pago a Proveedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"monto\": 100000,\n    \"metodo_pago\": \"transferencia\",\n    \"referencia\": \"TRF-2026-001\",\n    \"notas\": \"Abono a deuda\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/proveedores/1/pago",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "1", "pago"]
+						}
+					}
+				},
+				{
+					"name": "Historial de Pagos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/proveedores/1/pagos",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "1", "pagos"]
+						}
+					}
+				},
+				{
+					"name": "Incrementar Deuda",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"monto\": 250000,\n    \"concepto\": \"Compra de mercancía\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/proveedores/1/incrementar-deuda",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "1", "incrementar-deuda"]
+						}
+					}
+				},
+				{
+					"name": "Enviar Recordatorio de Pago",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/proveedores/1/recordatorio",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "1", "recordatorio"]
+						}
+					}
+				},
+				{
+					"name": "Resumen de Deudas",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/proveedores/resumen-deudas",
+							"host": ["{{base_url}}"],
+							"path": ["proveedores", "resumen-deudas"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📋 Cotizaciones",
+			"item": [
+				{
+					"name": "Listar Cotizaciones",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cotizaciones",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones"]
+						}
+					}
+				},
+				{
+					"name": "Crear Cotización",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"titulo\": \"Cotización de Alimentos Q1 2026\",\n    \"descripcion\": \"Solicitud de precios para reabastecimiento\",\n    \"fecha_limite\": \"2026-03-15\",\n    \"proveedor_ids\": [1, 2, 3],\n    \"productos\": [\n        {\n            \"producto_id\": 1,\n            \"cantidad\": 100\n        },\n        {\n            \"producto_id\": 2,\n            \"cantidad\": 50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/cotizaciones",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones"]
+						}
+					}
+				},
+				{
+					"name": "Ver Cotización",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cotizaciones/1",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones", "1"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar Cotización",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"titulo\": \"Cotización Actualizada\",\n    \"fecha_limite\": \"2026-03-20\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/cotizaciones/1",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones", "1"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar Cotización",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cotizaciones/1",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones", "1"]
+						}
+					}
+				},
+				{
+					"name": "Enviar Cotización a Proveedores",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cotizaciones/1/enviar",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones", "1", "enviar"]
+						}
+					}
+				},
+				{
+					"name": "Cancelar Cotización",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cotizaciones/1/cancelar",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones", "1", "cancelar"]
+						}
+					}
+				},
+				{
+					"name": "Completar Cotización",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cotizaciones/1/completar",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones", "1", "completar"]
+						}
+					}
+				},
+				{
+					"name": "Comparar Respuestas de Cotización",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cotizaciones/1/comparar",
+							"host": ["{{base_url}}"],
+							"path": ["cotizaciones", "1", "comparar"]
+						}
+					}
+				},
+				{
+					"name": "Registrar Respuesta de Proveedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tiempo_entrega_dias\": 5,\n    \"condiciones\": \"Pago a 30 días\",\n    \"notas\": \"Descuento por volumen disponible\",\n    \"productos\": [\n        {\n            \"cotizacion_producto_id\": 1,\n            \"precio_unitario\": 45000,\n            \"disponible\": true\n        },\n        {\n            \"cotizacion_producto_id\": 2,\n            \"precio_unitario\": 32000,\n            \"disponible\": true\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/cotizacion-proveedores/1/respuesta",
+							"host": ["{{base_url}}"],
+							"path": ["cotizacion-proveedores", "1", "respuesta"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔔 Notificaciones",
+			"item": [
+				{
+					"name": "Listar Notificaciones",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/notificaciones",
+							"host": ["{{base_url}}"],
+							"path": ["notificaciones"]
+						}
+					}
+				},
+				{
+					"name": "Contar No Leídas",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/notificaciones/no-leidas/count",
+							"host": ["{{base_url}}"],
+							"path": ["notificaciones", "no-leidas", "count"]
+						}
+					}
+				},
+				{
+					"name": "Marcar como Leída",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/notificaciones/1/leida",
+							"host": ["{{base_url}}"],
+							"path": ["notificaciones", "1", "leida"]
+						}
+					}
+				},
+				{
+					"name": "Marcar Todas como Leídas",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/notificaciones/marcar-todas-leidas",
+							"host": ["{{base_url}}"],
+							"path": ["notificaciones", "marcar-todas-leidas"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar Notificación",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/notificaciones/1",
+							"host": ["{{base_url}}"],
+							"path": ["notificaciones", "1"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar Todas las Leídas",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/notificaciones/leidas/all",
+							"host": ["{{base_url}}"],
+							"path": ["notificaciones", "leidas", "all"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📊 Reportes",
+			"item": [
+				{
+					"name": "Dashboard General",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/reportes/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["reportes", "dashboard"]
+						}
+					}
+				},
+				{
+					"name": "Inventario Valorizado",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/reportes/inventario-valorizado",
+							"host": ["{{base_url}}"],
+							"path": ["reportes", "inventario-valorizado"]
+						}
+					}
+				},
+				{
+					"name": "Stock en Alerta",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/reportes/stock-alerta",
+							"host": ["{{base_url}}"],
+							"path": ["reportes", "stock-alerta"]
+						}
+					}
+				},
+				{
+					"name": "Movimientos de Inventario",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/reportes/movimientos?fecha_inicio=2026-01-01&fecha_fin=2026-12-31&tipo=entrada",
+							"host": ["{{base_url}}"],
+							"path": ["reportes", "movimientos"],
+							"query": [
+								{
+									"key": "fecha_inicio",
+									"value": "2026-01-01"
+								},
+								{
+									"key": "fecha_fin",
+									"value": "2026-12-31"
+								},
+								{
+									"key": "tipo",
+									"value": "entrada"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Productos por Categoría",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/reportes/productos-por-categoria",
+							"host": ["{{base_url}}"],
+							"path": ["reportes", "productos-por-categoria"]
+						}
+					}
+				},
+				{
+					"name": "Productos Más Movidos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/reportes/productos-mas-movidos?limite=10",
+							"host": ["{{base_url}}"],
+							"path": ["reportes", "productos-mas-movidos"],
+							"query": [
+								{
+									"key": "limite",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Deudas a Proveedores",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/reportes/deudas-proveedores",
+							"host": ["{{base_url}}"],
+							"path": ["reportes", "deudas-proveedores"]
+						}
+					}
+				}
+			]
+		}
+	]
+}
+
