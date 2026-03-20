@@ -3,30 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\VerificationCodeMail;
+use App\Models\LogActividad;
 use App\Models\User;
 use App\Models\VerificationCode;
-use App\Models\LogActividad;
-use App\Mail\VerificationCodeMail;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     /**
-     * Solicitar código de verificación
+     * Paso 1: validar email + password y enviar codigo OTP al correo.
      */
-    public function solicitarCodigo(Request $request): JsonResponse
+    public function login(Request $request): JsonResponse
     {
         $request->validate([
             'email' => 'required|email',
+            'password' => 'required|string',
         ]);
 
         $email = strtolower($request->email);
+        $password = $request->password;
+        $mostrarCodigoEnRespuesta = (bool) env('AUTH_EXPOSE_OTP', false)
+            || app()->environment('local')
+            || config('app.debug');
 
-        // Rate limiting: máximo 5 intentos por minuto
-        $key = 'login-attempt:' . $email;
+        $key = 'password-login-attempt:' . $email;
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
             return response()->json([
@@ -37,107 +44,186 @@ class AuthController extends Controller
 
         RateLimiter::hit($key, 60);
 
-        // Verificar si el usuario existe y está activo
-        $user = User::where('email', $email)->first();
+        $user = User::query()
+            ->select(['id', 'nombre', 'email', 'password', 'rol', 'activo', 'estado_cuenta'])
+            ->where('email', $email)
+            ->first();
 
-        if (!$user) {
+        if (!$user || !$user->password || !Hash::check($password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Usuario no autorizado',
+                'message' => 'Credenciales invalidas',
             ], 401);
         }
 
-        if (!$user->activo) {
+        if (!$user->activo || $user->estado_cuenta === 'suspendido') {
             return response()->json([
                 'success' => false,
-                'message' => 'Tu cuenta está desactivada. Contacta al administrador.',
+                'message' => 'Tu cuenta esta desactivada. Contacta al administrador.',
             ], 401);
         }
 
-        // Invalidar códigos anteriores
         VerificationCode::where('email', $email)
             ->where('usado', false)
             ->update(['usado' => true]);
 
-        // Generar nuevo código de 6 dígitos
         $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // Crear código de verificación
-        $verificationCode = VerificationCode::create([
+        VerificationCode::create([
             'email' => $email,
             'codigo' => $codigo,
             'expira_en' => now()->addMinutes(10),
         ]);
 
-        // Enviar email con el código
-        try {
-            Mail::to($email)->queue(new VerificationCodeMail($codigo, $user->nombre));
-        } catch (\Exception $e) {
-            \Log::warning('Error al enviar email: ' . $e->getMessage());
+        $challengeToken = Str::random(64);
+        Cache::put('login-challenge:' . $challengeToken, [
+            'user_id' => $user->id,
+            'email' => $email,
+        ], now()->addMinutes(10));
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al enviar el correo. Intenta de nuevo.',
-            ], 500);
+        if (!$mostrarCodigoEnRespuesta) {
+            try {
+                dispatch(function () use ($email, $codigo, $user) {
+                    Mail::to($email)->send(new VerificationCodeMail($codigo, $user->nombre));
+                })->afterResponse();
+            } catch (\Throwable $e) {
+                Cache::forget('login-challenge:' . $challengeToken);
+                \Log::warning('Error al enviar email: ' . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al enviar el correo. Intenta de nuevo.',
+                ], 500);
+            }
+        }
+
+        RateLimiter::clear($key);
+
+        $mensaje = 'Codigo enviado al correo. Verifica para completar el acceso.';
+        if ($mostrarCodigoEnRespuesta) {
+            $mensaje = 'Codigo generado correctamente. Verifica para completar el acceso.';
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Se ha enviado un código de verificación a tu correo',
+            'message' => $mensaje,
+            'data' => [
+                'challenge_token' => $challengeToken,
+                'email' => $email,
+                'otp_preview' => $mostrarCodigoEnRespuesta ? $codigo : null,
+            ],
         ]);
     }
 
     /**
-     * Verificar código y obtener token
+     * Endpoint antiguo deshabilitado para evitar bypass sin password.
+     */
+    public function solicitarCodigo(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Este endpoint fue deshabilitado. Usa /auth/login.',
+        ], 410);
+    }
+
+    /**
+     * Paso 2: verificar codigo OTP usando challenge_token y entregar token de sesion.
      */
     public function verificarCodigo(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'challenge_token' => 'required|string',
             'codigo' => 'required|string|size:6',
         ]);
 
-        $email = strtolower($request->email);
+        $challengeToken = $request->challenge_token;
         $codigo = $request->codigo;
 
-        // Buscar código válido
-        $verificationCode = VerificationCode::validos($email, $codigo)->first();
-
-        if (!$verificationCode) {
+        $verifyKey = 'otp-verify-attempt:' . $challengeToken;
+        if (RateLimiter::tooManyAttempts($verifyKey, 5)) {
+            $seconds = RateLimiter::availableIn($verifyKey);
             return response()->json([
                 'success' => false,
-                'message' => 'Código inválido o expirado',
+                'message' => "Demasiados intentos. Espera {$seconds} segundos.",
+            ], 429);
+        }
+        RateLimiter::hit($verifyKey, 60);
+
+        $challenge = Cache::get('login-challenge:' . $challengeToken);
+
+        if (!$challenge || !isset($challenge['user_id'], $challenge['email'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesion de verificacion invalida o expirada.',
             ], 401);
         }
 
-        // Marcar código como usado
-        $verificationCode->marcarComoUsado();
+        $email = $challenge['email'];
+        $user = User::query()
+            ->select([
+                'id',
+                'nombre',
+                'email',
+                'rol',
+                'activo',
+                'estado_cuenta',
+                'ultimo_acceso',
+                'created_at',
+                'updated_at',
+                'primer_acceso_completado_en',
+            ])
+            ->find($challenge['user_id']);
 
-        // Obtener usuario
-        $user = User::where('email', $email)->first();
-
-        if (!$user || !$user->activo) {
+        if (!$user || !$user->activo || strtolower($user->email) !== strtolower($email)) {
+            Cache::forget('login-challenge:' . $challengeToken);
             return response()->json([
                 'success' => false,
                 'message' => 'Usuario no autorizado',
             ], 401);
         }
 
-        // Revocar tokens anteriores
-        $user->tokens()->delete();
+        $verificationCode = VerificationCode::validos($email, $codigo)->first();
 
-        // Crear nuevo token
+        if (!$verificationCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Codigo invalido o expirado',
+            ], 401);
+        }
+
+        $verificationCode->marcarComoUsado();
+        Cache::forget('login-challenge:' . $challengeToken);
+        RateLimiter::clear($verifyKey);
+
+        $user->update([
+            'ultimo_acceso' => now(),
+            'ip_ultimo_acceso' => $request->ip(),
+            'estado_cuenta' => $user->activo ? 'activo' : 'suspendido',
+            'primer_acceso_completado_en' => $user->primer_acceso_completado_en ?? now(),
+            'primer_acceso_token' => null,
+            'primer_acceso_expira_en' => null,
+        ]);
+
+        $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Registrar login
-        LogActividad::registrar('login', $user->id);
-
-        // Limpiar rate limiter
-        RateLimiter::clear('login-attempt:' . $email);
+        LogActividad::registrarAuditoria([
+            'accion' => 'login',
+            'user_id' => $user->id,
+            'modulo' => 'seguridad',
+            'modelo' => 'User',
+            'modelo_id' => $user->id,
+            'referencia' => $user->email,
+            'datos_nuevos' => [
+                'ultimo_acceso' => optional($user->ultimo_acceso)->toDateTimeString(),
+                'ip_ultimo_acceso' => $user->ip_ultimo_acceso,
+            ],
+            'observacion' => 'Inicio de sesion exitoso',
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Inicio de sesión exitoso',
+            'message' => 'Inicio de sesion exitoso',
             'data' => [
                 'user' => [
                     'id' => $user->id,
@@ -182,21 +268,27 @@ class AuthController extends Controller
     }
 
     /**
-     * Cerrar sesión
+     * Cerrar sesion
      */
     public function logout(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        // Registrar logout
-        LogActividad::registrar('logout', $user->id);
+        LogActividad::registrarAuditoria([
+            'accion' => 'logout',
+            'user_id' => $user->id,
+            'modulo' => 'seguridad',
+            'modelo' => 'User',
+            'modelo_id' => $user->id,
+            'referencia' => $user->email,
+            'observacion' => 'Cierre de sesion',
+        ]);
 
-        // Revocar token actual
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Sesión cerrada correctamente',
+            'message' => 'Sesion cerrada correctamente',
         ]);
     }
 
@@ -207,10 +299,16 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        // Registrar logout
-        LogActividad::registrar('logout_all', $user->id);
+        LogActividad::registrarAuditoria([
+            'accion' => 'logout_all',
+            'user_id' => $user->id,
+            'modulo' => 'seguridad',
+            'modelo' => 'User',
+            'modelo_id' => $user->id,
+            'referencia' => $user->email,
+            'observacion' => 'Accion sensible: cierre de todas las sesiones',
+        ]);
 
-        // Revocar todos los tokens
         $request->user()->tokens()->delete();
 
         return response()->json([
@@ -219,4 +317,3 @@ class AuthController extends Controller
         ]);
     }
 }
-

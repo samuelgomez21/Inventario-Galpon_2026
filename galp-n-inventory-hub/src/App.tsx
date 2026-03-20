@@ -10,10 +10,13 @@ import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ProductsPage from "@/pages/ProductsPage";
 import NewProductPage from "@/pages/NewProductPage";
+import InventoryMovementsPage from "@/pages/InventoryMovementsPage";
 import CategoriesPage from "@/pages/CategoriesPage";
 import LowStockPage from "@/pages/LowStockPage";
 import BudgetPage from "@/pages/BudgetPage";
 import ReportsPage from "@/pages/ReportsPage";
+import OwnerPanelPage from "@/pages/OwnerPanelPage";
+import AuditoriaPage from "@/pages/AuditoriaPage";
 import SuppliersPage from "@/pages/SuppliersPage";
 import QuotationsPage from "@/pages/QuotationsPage";
 import NewQuotationPage from "@/pages/NewQuotationPage";
@@ -85,10 +88,13 @@ const AppContent = () => {
         <Route index element={<DashboardPage />} />
         <Route path="productos" element={<ProductsPage />} />
         <Route path="productos/nuevo" element={<AdminRoute><NewProductPage /></AdminRoute>} />
+        <Route path="movimientos-inventario" element={<AdminRoute><InventoryMovementsPage /></AdminRoute>} />
         <Route path="categorias" element={<CategoriesPage />} />
         <Route path="stock-bajo" element={<LowStockPage />} />
         <Route path="presupuesto" element={<BudgetPage />} />
         <Route path="reportes" element={<ReportsPage />} />
+        <Route path="panel-dueno" element={<AdminRoute><OwnerPanelPage /></AdminRoute>} />
+        <Route path="auditoria" element={<AdminRoute><AuditoriaPage /></AdminRoute>} />
         <Route path="proveedores" element={<SuppliersPage />} />
         <Route path="cotizaciones" element={<QuotationsPage />} />
         <Route path="cotizaciones/nueva" element={<AdminRoute><NewQuotationPage /></AdminRoute>} />

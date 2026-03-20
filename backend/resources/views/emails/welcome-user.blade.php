@@ -15,27 +15,31 @@
 </head>
 <body>
     <div class="header">
-        <h1>🌾 ¡Bienvenido a El Galpón!</h1>
+        <h1>Bienvenido a El Galpon</h1>
         <p>Agropecuaria y Veterinaria</p>
     </div>
     <div class="content">
         <p>Hola <strong>{{ $nombreUsuario }}</strong>,</p>
-        <p>Tu cuenta ha sido creada exitosamente en el sistema de gestión de El Galpón.</p>
+        <p>Tu cuenta ha sido creada exitosamente en el sistema de gestion de El Galpon.</p>
 
         <div class="info-box">
-            <h3>📋 Información de tu cuenta:</h3>
+            <h3>Informacion de tu cuenta:</h3>
             <p><strong>Email:</strong> {{ $email }}</p>
+            <p><strong>Contrasena temporal:</strong> {{ $passwordTemporal }}</p>
             <p><strong>Rol:</strong> <span class="highlight">{{ ucfirst($rol) }}</span></p>
+            <p><strong>Enlace de primer acceso:</strong><br><a href="{{ $primerAccesoUrl }}">{{ $primerAccesoUrl }}</a></p>
+            <p><strong>Vence:</strong> {{ $expiraEn }}</p>
         </div>
 
-        <p>Para iniciar sesión, simplemente ingresa tu email y recibirás un código de verificación.</p>
+        <p>Para iniciar sesion por primera vez, usa el enlace seguro anterior. Luego ingresa tu email y contrasena temporal.</p>
+        <p>Te recomendamos cambiar la contrasena cuando ingreses por primera vez.</p>
+        <p>Si el enlace expiro, solicita al administrador que regenere el acceso.</p>
 
-        <p>¡Bienvenido al equipo!</p>
+        <p>Bienvenido al equipo.</p>
     </div>
     <div class="footer">
-        <p>El Galpón - Alcalá, Valle del Cauca, Colombia</p>
-        <p>Este es un correo automático, por favor no respondas.</p>
+        <p>El Galpon - Alcala, Valle del Cauca, Colombia</p>
+        <p>Este es un correo automatico, por favor no respondas.</p>
     </div>
 </body>
 </html>
-

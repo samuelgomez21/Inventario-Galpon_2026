@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\CotizacionController;
 use App\Http\Controllers\Api\CotizacionProveedorPublicController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\Api\NotificacionController;
+use App\Http\Controllers\Api\AuditController;
+use App\Http\Controllers\Api\ConfiguracionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,6 +21,7 @@ use App\Http\Controllers\Api\NotificacionController;
 
 // Rutas públicas de autenticación
 Route::prefix('auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
     Route::post('/solicitar-codigo', [AuthController::class, 'solicitarCodigo']);
     Route::post('/verificar-codigo', [AuthController::class, 'verificarCodigo']);
 });
@@ -58,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Productos (lectura para todos)
     Route::get('/productos', [ProductoController::class, 'index']);
+    Route::get('/productos/buscar', [ProductoController::class, 'buscarRapido']);
     Route::get('/productos/stock-bajo', [ProductoController::class, 'stockBajo']);
     Route::get('/productos/{producto}', [ProductoController::class, 'show']);
     Route::get('/productos/{producto}/movimientos', [ProductoController::class, 'movimientos']);
@@ -74,15 +78,22 @@ Route::middleware('auth:sanctum')->group(function () {
     // Reportes (todos los usuarios autenticados)
     Route::prefix('reportes')->group(function () {
         Route::get('/dashboard', [ReporteController::class, 'dashboard']);
+        Route::get('/panel-dueno', [ReporteController::class, 'panelDueno'])->middleware('role:admin');
         Route::get('/inventario-valorizado', [ReporteController::class, 'inventarioValorizado']);
         Route::get('/movimientos', [ReporteController::class, 'movimientos']);
         Route::get('/productos-por-categoria', [ReporteController::class, 'productosPorCategoria']);
         Route::get('/productos-mas-movidos', [ReporteController::class, 'productosMasMovidos']);
+        Route::get('/deudas-proveedores', [ReporteController::class, 'deudasProveedores']);
         Route::get('/stock-alerta', [ReporteController::class, 'stockAlerta']);
+        Route::get('/exportar/{tipo}/{formato}', [ReporteController::class, 'exportar']);
     });
 
     // Rutas solo para administradores
     Route::middleware('role:admin')->group(function () {
+        Route::get('/auditoria', [AuditController::class, 'index']);
+        Route::post('/auditoria/configuracion', [AuditController::class, 'registrarConfiguracion']);
+        Route::get('/configuracion', [ConfiguracionController::class, 'show']);
+        Route::put('/configuracion', [ConfiguracionController::class, 'update']);
 
         // Gestión de usuarios
         Route::apiResource('usuarios', UserController::class)->parameters(['usuarios' => 'user']);
@@ -96,10 +107,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Gestión de productos
         Route::post('/productos', [ProductoController::class, 'store']);
+        Route::post('/productos/importar-excel', [ProductoController::class, 'importarExcel']);
         Route::put('/productos/{producto}', [ProductoController::class, 'update']);
         Route::delete('/productos/{producto}', [ProductoController::class, 'destroy']);
         Route::post('/productos/{producto}/entrada', [ProductoController::class, 'entradaStock']);
         Route::post('/productos/{producto}/salida', [ProductoController::class, 'salidaStock']);
+        Route::post('/movimientos-inventario/entrada-lote', [ProductoController::class, 'entradaStockLote']);
+        Route::post('/movimientos-inventario/salida-lote', [ProductoController::class, 'salidaStockLote']);
 
         // Gestión de proveedores
         Route::post('/proveedores', [ProveedorController::class, 'store']);

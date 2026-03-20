@@ -12,7 +12,7 @@ export interface Producto {
   precio_venta: number;
   stock: number;
   stock_minimo: number;
-  unidad_medida: string;
+  unidad_medida?: string | null;
   lote: string | null;
   fecha_vencimiento: string | null;
   ubicacion: string | null;
@@ -21,8 +21,8 @@ export interface Producto {
   categoria?: {
     id: number;
     nombre: string;
-    color: string;
-    icono: string;
+    color: string | null;
+    icono: string | null;
   };
   subcategoria?: {
     id: number;
@@ -30,8 +30,10 @@ export interface Producto {
   };
   proveedor?: {
     id: number;
-    nombre: string;
+    nombre_empresa: string;
   };
+  movimientos?: MovimientoInventario[];
+  ultimo_movimiento_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,10 +45,12 @@ export interface MovimientoInventario {
   cantidad: number;
   stock_anterior: number;
   stock_nuevo: number;
-  precio_unitario: number | null;
+  precio_compra: number | null;
   lote: string | null;
   proveedor_id: number | null;
   motivo: string | null;
+  recibido_por: string | null;
+  notas: string | null;
   user_id: number;
   user?: {
     id: number;
@@ -61,14 +65,55 @@ export interface ProductosFilter {
   proveedor_id?: number;
   estado_stock?: 'normal' | 'bajo' | 'critico';
   buscar?: string;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
   page?: number;
+  per_page?: number | 'all';
+  signal?: AbortSignal;
+}
+
+export interface MovimientosFilter {
+  tipo?: 'entrada' | 'salida' | 'ajuste';
+  fecha_desde?: string;
+  fecha_hasta?: string;
   per_page?: number;
+}
+
+export interface EntradaLoteItem {
+  producto_id: number;
+  cantidad: number;
+  precio_compra?: number;
+  lote?: string;
+  notas?: string;
+}
+
+export interface SalidaLoteItem {
+  producto_id: number;
+  cantidad: number;
+  notas?: string;
+}
+
+export interface ProductoBusqueda {
+  id: number;
+  codigo: string;
+  nombre: string;
+  presentacion?: string | null;
+  stock: number;
+  stock_minimo: number;
+  precio_compra: number;
+  precio_venta: number;
 }
 
 const productosService = {
   // Obtener todos los productos (paginado)
-  getAll: async (filters?: ProductosFilter): Promise<PaginatedResponse<Producto>> => {
-    const response = await api.get('/productos', { params: filters });
+  getAll: async (filters?: ProductosFilter): Promise<ApiResponse<PaginatedResponse<Producto>>> => {
+    const response = await api.get('/productos', {
+      params: {
+        ...filters,
+        signal: undefined,
+      },
+      signal: filters?.signal,
+    });
     return response.data;
   },
 
@@ -85,14 +130,45 @@ const productosService = {
   },
 
   // Obtener movimientos de un producto
-  getMovimientos: async (productoId: number): Promise<ApiResponse<MovimientoInventario[]>> => {
-    const response = await api.get(`/productos/${productoId}/movimientos`);
+  getMovimientos: async (productoId: number, filters?: MovimientosFilter): Promise<ApiResponse<PaginatedResponse<MovimientoInventario>>> => {
+    const response = await api.get(`/productos/${productoId}/movimientos`, { params: filters });
+    return response.data;
+  },
+
+  // Buscar productos por nombre/codigo para autocompletar
+  buscarRapido: async (q: string, limit = 30): Promise<ApiResponse<ProductoBusqueda[]>> => {
+    const response = await api.get('/productos/buscar', { params: { q, limit } });
     return response.data;
   },
 
   // Crear producto (solo admin)
-  create: async (data: Partial<Producto>): Promise<ApiResponse<Producto>> => {
+  create: async (data: Partial<Producto>): Promise<ApiResponse<Producto> & { warnings?: string[] }> => {
     const response = await api.post('/productos', data);
+    return response.data;
+  },
+
+  // Importar productos desde Excel (solo admin)
+  importarExcel: async (archivo: File, opciones?: { sobrescribir_existentes?: boolean; stock_minimo_default?: number }): Promise<ApiResponse<{
+    creados: number;
+    actualizados: number;
+    omitidos: number;
+    errores: string[];
+  }>> => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+
+    if (typeof opciones?.sobrescribir_existentes === 'boolean') {
+      formData.append('sobrescribir_existentes', opciones.sobrescribir_existentes ? '1' : '0');
+    }
+    if (typeof opciones?.stock_minimo_default === 'number') {
+      formData.append('stock_minimo_default', String(opciones.stock_minimo_default));
+    }
+
+    const response = await api.post('/productos/importar-excel', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
@@ -111,10 +187,10 @@ const productosService = {
   // Registrar entrada de stock (solo admin)
   entradaStock: async (productoId: number, data: {
     cantidad: number;
-    precio_compra: number;
+    precio_compra?: number;
     lote?: string;
     proveedor_id?: number;
-    motivo?: string;
+    notas?: string;
   }): Promise<ApiResponse<MovimientoInventario>> => {
     const response = await api.post(`/productos/${productoId}/entrada`, data);
     return response.data;
@@ -124,11 +200,60 @@ const productosService = {
   salidaStock: async (productoId: number, data: {
     cantidad: number;
     motivo: string;
+    notas?: string;
   }): Promise<ApiResponse<MovimientoInventario>> => {
     const response = await api.post(`/productos/${productoId}/salida`, data);
+    return response.data;
+  },
+
+  // Entrada por lote de multiples productos (factura de compra)
+  entradaStockLote: async (data: {
+    factura_compra: string;
+    proveedor_id?: number;
+    fecha_factura?: string;
+    observacion?: string;
+    productos: EntradaLoteItem[];
+  }): Promise<ApiResponse<{
+    tipo_operacion?: string;
+    factura_compra: string;
+    total_items: number;
+    monto_total_compra: number;
+    productos: Array<{
+      producto_id: number;
+      codigo: string;
+      nombre: string;
+      cantidad: number;
+      stock_anterior: number;
+      stock_nuevo: number;
+    }>;
+  }> & { warnings?: string[] }> => {
+    const response = await api.post('/movimientos-inventario/entrada-lote', data);
+    return response.data;
+  },
+
+  // Salida por lote de multiples productos
+  salidaStockLote: async (data: {
+    motivo: string;
+    referencia_documento?: string;
+    observacion?: string;
+    productos: SalidaLoteItem[];
+  }): Promise<ApiResponse<{
+    tipo_operacion?: string;
+    motivo: string;
+    referencia_documento: string | null;
+    total_items: number;
+    productos: Array<{
+      producto_id: number;
+      codigo: string;
+      nombre: string;
+      cantidad: number;
+      stock_anterior: number;
+      stock_nuevo: number;
+    }>;
+  }> & { warnings?: string[] }> => {
+    const response = await api.post('/movimientos-inventario/salida-lote', data);
     return response.data;
   },
 };
 
 export default productosService;
-
